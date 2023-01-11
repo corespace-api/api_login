@@ -5,20 +5,25 @@ const fs = require('fs');
 // Loading custom modules
 const Logger = require('../assets/utils/logger');
 
-// Create the logger
-const logger = new Logger("login/health");
+class Health {
+  constructor() {
+    this.logger = new Logger("login/health");
+    this.router = express.Router();
+  }
 
-// Importing router
-const router = express.Router();
+  rootRoute() {
+    this.router.get("/", (req, res) => {
+      res.status(200).json({
+        service: "login",
+        healthy: true,
+        uptime: process.uptime()
+      });
+    });
+  }
 
-// Create the root product route
-router.get("/", (req, res) => {
-  res.status(200).json({
-    healthy: true,
-    uptime: process.uptime()
-  });
-});
+  load() {
+    this.rootRoute();
+  }
+}
 
-logger.success("Loaded root route");
-
-module.exports = router;
+module.exports = Health;
