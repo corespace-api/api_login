@@ -1,11 +1,11 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const path = require('path');
-const fs = require('fs');
 
 // Loading custom modules
 const getAllRoutes = require('./assets/utils/getAllRoutes');
 const Logger = require('./assets/utils/logger');
+const allowedHeader = require('./assets/networking/allowedHeader');
 
 // Create the logger
 const logger = new Logger("login");
@@ -22,8 +22,6 @@ const args = process.argv.slice(2);
 // Load configuration
 const PORT = process.env.PORT || 3000;
 const ROUTES_PATH = path.join(__dirname, `routes`);
-let RunMode = 'dev';
-
 
 // #############################################################################
 // ##################          Load all Middlewares ############################
@@ -34,18 +32,19 @@ service.use(express.json());
 service.use(express.urlencoded({ extended: true }));
 
 // setting allowed headers
-service.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', process.env.ALLOWED_ORIGINS);
-  res.header('Access-Control-Allow-Headers', process.env.ALLOWED_HEADERS);
-  res.header('Access-Control-Allow-Methods', process.env.ALLOWED_METHODS_X);
+service.use(allowedHeader);
+// service.use((req, res, next) => {
+//   res.header('Access-Control-Allow-Origin', process.env.ALLOWED_ORIGINS);
+//   res.header('Access-Control-Allow-Headers', process.env.ALLOWED_HEADERS);
+//   res.header('Access-Control-Allow-Methods', process.env.ALLOWED_METHODS_X);
 
-  if (req.method === 'OPTIONS') {
-    res.header('Access-Control-Allow-Methods', process.env.ALLOWED_METHODS);
-    return res.status(200).json({});
-  }
+//   if (req.method === 'OPTIONS') {
+//     res.header('Access-Control-Allow-Methods', process.env.ALLOWED_METHODS);
+//     return res.status(200).json({});
+//   }
 
-  next();
-});
+//   next();
+// });
 // -;-
 
 // #############################################################################
@@ -71,10 +70,20 @@ logger.info(`Found ${apiRouteKeys.length} routes`);
 logger.log("Beginnig to load routes...");
 
 apiRoutes.forEach(route => {
+  logger.log(`Loading route: ${route}`);
+
   const routePath = path.join(ROUTES_PATH, route);
   const routeName = route.replace('.js', '');
+
+  // load route classes
   const routeHandler = require(routePath);
-  service.use(`/${routeName}`, routeHandler);
+  const routeInstance = new routeHandler();
+
+  // load route methods
+  routeInstance.load();
+
+  // add route to service
+  service.use(`/${routeName}`, routeInstance.router);
 });
 
 logger.success("Routes loading complete!");
