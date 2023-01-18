@@ -23,6 +23,17 @@ const args = process.argv.slice(2);
 // Load configuration
 const PORT = process.env.PORT || 3000;
 const ROUTES_PATH = path.join(__dirname, `routes`);
+const allowDebug = process.env.allowDebug || false;
+
+// #############################################################################
+// ##################          Running Checks ############################
+// #############################################################################
+if (allowDebug === true) { 
+  logger.info("Debug mode enabled, skipping forbidden source check"); 
+  return; 
+} else {
+  logger.info("Debug mode disabled, checking forbidden source");
+}
 
 // #############################################################################
 // ##################          Load all Middlewares ############################
@@ -34,19 +45,6 @@ service.use(express.urlencoded({ extended: true }));
 
 // setting allowed headers
 service.use(cors(allowedHeader));
-// service.use((req, res, next) => {
-//   res.header('Access-Control-Allow-Origin', process.env.ALLOWED_ORIGINS);
-//   res.header('Access-Control-Allow-Headers', process.env.ALLOWED_HEADERS);
-//   res.header('Access-Control-Allow-Methods', process.env.ALLOWED_METHODS_X);
-
-//   if (req.method === 'OPTIONS') {
-//     res.header('Access-Control-Allow-Methods', process.env.ALLOWED_METHODS);
-//     return res.status(200).json({});
-//   }
-
-//   next();
-// });
-// -;-
 
 // #############################################################################
 // ##################       Service Request Log      ###########################
@@ -69,6 +67,20 @@ const apiRouteKeys = Object.keys(apiRoutes)
 
 logger.info(`Found ${apiRouteKeys.length} routes`);
 logger.log("Beginnig to load routes...");
+
+// check if the request originates from a forbidden source
+service.use((req, res, next) => {
+  const userAgent = req.headers['user-agent'];
+  if (userAgent.includes('curl') || userAgent.includes('PostmanRuntime') || userAgent.includes('insomnia')) {
+    logger.warn("Forbidden source detected, aborting request");
+    res.status(403).json({
+      error: "Forbidden",
+      message: "You are not allowed to access this resource",
+      status: 403
+    });
+  }
+  return;
+});
 
 apiRoutes.forEach(route => {
   logger.log(`Loading route: ${route}`);
