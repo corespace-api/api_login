@@ -83,8 +83,10 @@ service.use((req, res, next) => {
       message: "You are not allowed to access this resource",
       status: 403
     });
+    return;
+  } else {
+    next();
   }
-  return;
 });
 
 apiRoutes.forEach(route => {
