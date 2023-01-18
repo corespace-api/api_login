@@ -69,8 +69,8 @@ async function setLastLogin(username) {
   await user.save();
 }
 
-function checkPasswordHash(incPassword, dbPassword) {
-  return incPassword === dbPassword;
+function checkPasswordHash(reqPassword, dbPassword) {
+  return reqPassword === dbPassword;
 }
 
 class Health {
@@ -133,6 +133,15 @@ class Health {
           user: userStatus.username,
           status: userStatus.status,
           message: "User is not active, please contact the administrator",
+        });
+        return;
+      }
+
+      if (checkPasswordHash(password, user.passwordHash) === false) {
+        
+        res.status(401).json({
+          error: "Wrong password",
+          message: "Please check your username and password or create a new account"
         });
         return;
       }
