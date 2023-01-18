@@ -43,6 +43,7 @@ class Health {
     // Starting connection to the database
     this.dbc.createAUrl();
     this.logger.log(`Starting connection to the database...`);
+    this.logger.log(`Database URL: ${this.dbc.url}`);
     this.dbc.attemptConnection()
       .then(() => {
         this.logger.success("Database connection succeeded");
