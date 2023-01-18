@@ -34,6 +34,7 @@ if (allowDebug === true) {
 } else {
   logger.info("Debug mode disabled, checking forbidden source");
 }
+// -;-
 
 // #############################################################################
 // ##################          Load all Middlewares ############################
@@ -45,6 +46,7 @@ service.use(express.urlencoded({ extended: true }));
 
 // setting allowed headers
 service.use(cors(allowedHeader));
+// -;-
 
 // #############################################################################
 // ##################       Service Request Log      ###########################
