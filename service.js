@@ -23,14 +23,15 @@ const args = process.argv.slice(2);
 // Load configuration
 const PORT = process.env.PORT || 3000;
 const ROUTES_PATH = path.join(__dirname, `routes`);
-const allowDebug = process.env.allowDebug || false;
+const allowDebug = process.env.ALLOW_DEBUG || false;
+
+logger.info(allowDebug)
 
 // #############################################################################
 // ##################          Running Checks ############################
 // #############################################################################
-if (allowDebug === true) { 
+if (allowDebug) { 
   logger.info("Debug mode enabled, skipping forbidden source check"); 
-  return; 
 } else {
   logger.info("Debug mode disabled, checking forbidden source");
 }
@@ -73,6 +74,8 @@ logger.log("Beginnig to load routes...");
 // check if the request originates from a forbidden source
 service.use((req, res, next) => {
   const userAgent = req.headers['user-agent'];
+
+  if (allowDebug) { return next(); }
   if (userAgent.includes('curl') || userAgent.includes('PostmanRuntime') || userAgent.includes('insomnia')) {
     logger.warn("Forbidden source detected, aborting request");
     res.status(403).json({
