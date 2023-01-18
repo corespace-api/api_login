@@ -1,6 +1,7 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const path = require('path');
+const cors = require('cors');
 
 // Loading custom modules
 const getAllRoutes = require('./assets/utils/getAllRoutes');
@@ -32,7 +33,7 @@ service.use(express.json());
 service.use(express.urlencoded({ extended: true }));
 
 // setting allowed headers
-service.use(allowedHeader);
+service.use(cors(allowedHeader));
 // service.use((req, res, next) => {
 //   res.header('Access-Control-Allow-Origin', process.env.ALLOWED_ORIGINS);
 //   res.header('Access-Control-Allow-Headers', process.env.ALLOWED_HEADERS);
