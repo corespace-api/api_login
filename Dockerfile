@@ -4,8 +4,12 @@ LABEL org.opencontainers.image.name="login"
 
 # -- Installing basic dependencies
 RUN apk update && apk upgrade
-RUN apk add --no-cache bash curl nano wget
+RUN apk add --no-cache bash curl nano wget tzdata
 RUN rm /bin/sh && ln -s /bin/bash /bin/sh
+
+# -- Set timezone to Universal Time
+RUN cp /usr/share/zoneinfo/UTC /etc/localtime
+RUN echo "UTC" > /etc/timezone
 
 # -- Presetup for NodeJS 
 ENV NVM_DIR /usr/local/nvm
