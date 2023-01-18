@@ -30,7 +30,7 @@ logger.info(allowDebug)
 // #############################################################################
 // ##################          Running Checks ############################
 // #############################################################################
-if (allowDebug === "true") { 
+if (allowDebug === true) { 
   logger.info("Debug mode enabled, skipping forbidden source check"); 
 } else {
   logger.info("Debug mode disabled, checking forbidden source");
@@ -75,7 +75,7 @@ logger.log("Beginnig to load routes...");
 service.use((req, res, next) => {
   const userAgent = req.headers['user-agent'];
 
-  if (allowDebug === "true") { return next(); }
+  if (allowDebug === true) { return next(); }
   if (userAgent.includes('curl') || userAgent.includes('PostmanRuntime') || userAgent.includes('insomnia')) {
     logger.warn("Forbidden source detected, aborting request");
     res.status(403).json({
