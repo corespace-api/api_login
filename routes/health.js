@@ -4,6 +4,7 @@ const fs = require('fs');
 
 // Loading custom modules
 const Logger = require('../assets/utils/logger');
+const HealthCheck = require('../assets/utils/healthcheck');
 
 class Health {
   constructor() {
