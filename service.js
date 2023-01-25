@@ -7,6 +7,7 @@ const cors = require('cors');
 const getAllRoutes = require('./assets/utils/getAllRoutes');
 const Logger = require('./assets/utils/logger');
 const allowedHeader = require('./assets/networking/allowedHeader');
+const fingerprintMiddleware = require('./assets/middleware/mdFingerprint');
 
 // Create the logger
 const logger = new Logger("login");
@@ -44,6 +45,9 @@ logger.log("Loading middlewares...");
 // Add middleware to parse the body of the request
 service.use(express.json());
 service.use(express.urlencoded({ extended: true }));
+
+// creating fingerprint of incoming requests
+service.use(fingerprintMiddleware);
 
 // setting allowed headers
 service.use(cors(allowedHeader));
