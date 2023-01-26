@@ -5,9 +5,7 @@ const fs = require('fs');
 
 // Loading custom modules
 const Logger = require('../assets/utils/logger');
-const {
-  DBConnector
-} = require('../assets/database/DBManager');
+const { DBConnector } = require('../assets/database/DBManager');
 
 // Loading models
 const userSchema = require('../assets/models/user');
