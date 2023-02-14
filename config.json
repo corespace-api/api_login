@@ -1,5 +1,8 @@
 {
     "ALLOWED_AGENDS": [
-        "insomnia"
-    ]
+        "Mozilla",
+        "AppleWebKit",
+        "Chrome"
+    ],
+    "DEBUG": false
 }

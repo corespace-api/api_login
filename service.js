@@ -30,7 +30,7 @@ class Service {
     // Load configuration
     this.config.PORT = process.env.PORT || 3000;
     this.config.ROUTES_PATH = path.join(__dirname, `routes`);
-    this.config.allowDebug = process.env.ALLOW_DEBUG || false;
+    this.config.allowDebug = serviceConfig["DEBUG"] || process.env.ALLOW_DEBUG || false;
     this.config.ALLOWED_AGENDS = serviceConfig["ALLOWED_AGENDS"] || process.env.ALLOWED_AGENDS || [];
   }
 
@@ -80,20 +80,22 @@ class Service {
   }
 
   checkOrigin() {
+    this.logger.info(`The current debug mode is: ${this.config.allowDebug}`)
+
     this.server.use((req, res, next) => {
       const userAgent = req.headers["user-agent"];
+      if (this.config.allowDebug) { next(); return; }
+      const userAgentFirstPart = userAgent.split("/")[0];
 
-      if (this.config.allowDebug || this.config.allowDebug === true) { next(); return; }
-      console.log(userAgent);
-      if (!this.config.ALLOWED_AGENDS.includes(userAgent)) {
-        this.logger.warn("Forbidden source detected, aborting request");
-        res.status(403).json({
-          error: "Forbidden",
-          message: "You are not allowed to access this resource"
-        });
-        return;
-      } else {
+      if (this.config.ALLOWED_AGENDS.includes(userAgentFirstPart)) {
         next();
+      } else {
+        this.logger.warn(`User-Agent not allowed: ${userAgent}`);
+        res.status(403).json({
+          status: "error",
+          code: 403,
+          message: "Access denied",
+        });
       }
     });
   }
