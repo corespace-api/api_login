@@ -54,7 +54,6 @@ class Service {
     this.serviceManager = new ServiceManager(this.service, 10000, true);
     this.serviceManager.registerService();
     this.serviceManager.listenForKillSignal();
-    this.serviceManager.checkForServiceRemoval();
   }
 
   refreshStatus() {
