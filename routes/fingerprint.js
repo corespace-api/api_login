@@ -4,20 +4,20 @@ const fs = require('fs');
 
 // Loading custom modules
 const Logger = require('../assets/utils/logger');
-const HealthCheck = require('../assets/utils/healthcheck');
 
-class Health {
+
+class FingerPrintService {
   constructor() {
-    this.logger = new Logger("login/health");
+    this.logger = new Logger("login/fps");
     this.router = express.Router();
   }
 
   rootRoute() {
     this.router.get("/", (req, res) => {
       res.status(200).json({
-        service: "login",
-        healthy: true,
-        uptime: process.uptime()
+        status: "success",
+        fingerprint: req.fingerprint,
+        message: "Fingerprint generated successfully"
       });
     });
   }
@@ -27,4 +27,4 @@ class Health {
   }
 }
 
-module.exports = Health;
+module.exports = FingerPrintService;

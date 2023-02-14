@@ -1,104 +1,177 @@
-const express = require('express');
-const dotenv = require('dotenv');
-const path = require('path');
+const express = require("express");
+const dotenv = require("dotenv");
+const crypto = require("crypto");
+const cors = require("cors");
+const path = require("path");
+const fs = require("fs");
 
-// Loading custom modules
-const getAllRoutes = require('./assets/utils/getAllRoutes');
-const Logger = require('./assets/utils/logger');
-const allowedHeader = require('./assets/networking/allowedHeader');
+const Logger = require("./assets/utils/logger");
+const ServiceManager = require("./assets/utils/serviceManager");
+const { DBConnector } = require("./assets/database/DBManager");
+const getAllRoutes = require("./assets/utils/getAllRoutes");
+const allowedHeader = require("./assets/networking/allowedHeader");
+const fingerprintMiddleware = require("./assets/middleware/mdFingerprint");
 
-// Create the logger
-const logger = new Logger("login");
+class Service {
+  constructor(service) {
+    this.server = express();
+    this.service = service;
+    this.router = express.Router();
+    this.logger = new Logger("Login/Service");
+    this.dbc = new DBConnector();
+    this.timer = 10000;
+    this.config = {};
+  }
 
-logger.log("Booting up microservice...");
+  loadConfig() {
+    const serviceConfig = JSON.parse(fs.readFileSync(path.join(__dirname, "config.json")));
+    dotenv.config();
 
-// Load environment variables from .env file and creating the service
-const service = express();
-dotenv.config();
+    // Load configuration
+    this.config.PORT = process.env.PORT || 3000;
+    this.config.ROUTES_PATH = path.join(__dirname, `routes`);
+    this.config.allowDebug = process.env.ALLOW_DEBUG || false;
+    this.config.ALLOWED_AGENDS = serviceConfig["ALLOWED_AGENDS"] || process.env.ALLOWED_AGENDS || [];
+  }
 
-// get run arguments
-const args = process.argv.slice(2);
+  dbConnection() {
+    // Starting connection to the database
+    this.dbc.createAUrl();
+    this.logger.log(`Starting connection to the database...`);
+    this.logger.log(`Database URL: ${this.dbc.url}`);
+    this.dbc
+      .attemptConnection()
+      .then(() => {
+        this.logger.success("Database connection succeeded");
+      })
+      .catch((error) => {
+        this.logger.log("Database connection failed");
+        this.logger.error(error);
+      });
+  }
 
-// Load configuration
-const PORT = process.env.PORT || 3000;
-const ROUTES_PATH = path.join(__dirname, `routes`);
+  manage() {
+    this.serviceManager = new ServiceManager(this.service, 10000, true);
+    this.serviceManager.registerService();
+    this.serviceManager.listenForKillSignal();
+    this.serviceManager.checkForServiceRemoval();
+  }
 
-// #############################################################################
-// ##################          Load all Middlewares ############################
-// #############################################################################
-logger.log("Loading middlewares...");
-// Add middleware to parse the body of the request
-service.use(express.json());
-service.use(express.urlencoded({ extended: true }));
+  refreshStatus() {
+    setInterval(() => {
+      this.serviceManager.setServiceStatus("active").catch((error) => {
+        this.logger.error(error);
+      });
+    }, this.timer);
+  }
 
-// setting allowed headers
-service.use(allowedHeader);
-// service.use((req, res, next) => {
-//   res.header('Access-Control-Allow-Origin', process.env.ALLOWED_ORIGINS);
-//   res.header('Access-Control-Allow-Headers', process.env.ALLOWED_HEADERS);
-//   res.header('Access-Control-Allow-Methods', process.env.ALLOWED_METHODS_X);
+  gracefulShutdown() {
+    this.logger.log("Gracefully shutting down the service...");
+    this.dbc.closeConnection();
+    this.serviceManager
+      .unregisterService()
+      .then(() => {
+        this.logger.success("Service shutdown complete");
+        process.exit(1);
+      })
+      .catch((error) => {
+        this.logger.error(error);
+        process.exit(1);
+      });
+  }
 
-//   if (req.method === 'OPTIONS') {
-//     res.header('Access-Control-Allow-Methods', process.env.ALLOWED_METHODS);
-//     return res.status(200).json({});
-//   }
+  checkOrigin() {
+    this.server.use((req, res, next) => {
+      const userAgent = req.headers["user-agent"];
 
-//   next();
-// });
-// -;-
+      if (this.config.allowDebug || this.config.allowDebug === true) { next(); return; }
+      console.log(userAgent);
+      if (!this.config.ALLOWED_AGENDS.includes(userAgent)) {
+        this.logger.warn("Forbidden source detected, aborting request");
+        res.status(403).json({
+          error: "Forbidden",
+          message: "You are not allowed to access this resource"
+        });
+        return;
+      } else {
+        next();
+      }
+    });
+  }
 
-// #############################################################################
-// ##################       Service Request Log      ###########################
-// #############################################################################
+  loadMiddleware() {
+    this.server.use(express.json());
+    this.server.use(express.urlencoded({ extended: true }));
+    // this.server.use(cors(allowedHeader));
+    this.server.use(fingerprintMiddleware);
+    this.server.disable("x-powered-by");
+  }
 
-service.use((req, res, next) => {
-  headers = req.headers;
-  reqMessage = `Request: ${req.method} ${req.originalUrl} + ${JSON.stringify(headers)}`;
-  logger.request(reqMessage);
-  next();
+  logRequests() {
+    this.server.use((req, res, next) => {
+      const headers = req.headers;
+      const reqMessage = `Request: ${req.method} ${
+        req.originalUrl
+      } + ${JSON.stringify(headers)}`;
+      this.logger.request(reqMessage);
+      next();
+    });
+  }
+
+  loadRoutes() {
+    const apiRoutes = getAllRoutes(this.config.ROUTES_PATH);
+    const apiRouteKeys = Object.keys(apiRoutes);
+
+    this.logger.info(`Found ${apiRouteKeys.length} routes`);
+    this.logger.log("Beginnig to load routes...");
+
+    apiRoutes.forEach((route) => {
+      this.logger.log(`Loading route: ${route}`);
+
+      const routePath = path.join(this.config.ROUTES_PATH, route);
+      const routeName = route.replace(".js", "");
+
+      // load route classes
+      const routeHandler = require(routePath);
+      const routeInstance = new routeHandler(this.dbc);
+
+      // load route methods
+      routeInstance.load();
+
+      // add route to service
+      this.server.use(`/${routeName}`, routeInstance.router);
+    });
+
+    this.logger.success("Routes loading complete!");
+  }
+
+  listen() {
+    this.server.listen(this.config.PORT || 3000, () => {
+      this.logger.log(`Running on port ${this.config.PORT}`);
+    });
+  }
+}
+
+const service = new Service({
+  type: "Login",
+  name: "Login",
+  uuid: crypto.randomBytes(16).toString("hex"),
+  version: "1.0.0",
+  description: "Login service for the microservice architecture",
 });
 
-// -;-
+service.loadConfig();
+service.dbConnection();
+service.checkOrigin();
+service.loadMiddleware();
+service.logRequests();
+service.loadRoutes();
+service.listen();
 
-// #############################################################################
-// ##################      Load all Routes     #################################
-// #############################################################################
-const apiRoutes = getAllRoutes(ROUTES_PATH);
-const apiRouteKeys = Object.keys(apiRoutes)
+service.manage();
+service.refreshStatus();
 
-logger.info(`Found ${apiRouteKeys.length} routes`);
-logger.log("Beginnig to load routes...");
-
-apiRoutes.forEach(route => {
-  logger.log(`Loading route: ${route}`);
-
-  const routePath = path.join(ROUTES_PATH, route);
-  const routeName = route.replace('.js', '');
-
-  // load route classes
-  const routeHandler = require(routePath);
-  const routeInstance = new routeHandler();
-
-  // load route methods
-  routeInstance.load();
-
-  // add route to service
-  service.use(`/${routeName}`, routeInstance.router);
-});
-
-logger.success("Routes loading complete!");
-// -;-
-
-service.use((error, req, res, next) => {
-  res.status(error.status || 500);
-  res.json({
-    error: {
-      message: error.message,
-      status: (error.status || 500)
-    }
-  });
-});
-
-service.listen(PORT || 3000, () => {
-  logger.log(`running on port ${PORT}`);
+// listen for process termination
+process.on("SIGINT", () => {
+  service.gracefulShutdown();
 });
