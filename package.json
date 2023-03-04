@@ -5,7 +5,6 @@
   "main": "service.js",
   "author": "AsP3X",
   "license": "MIT",
-  "private": false,
   "scripts": {
     "dev": "nodemon service.js development",
     "start": "node service.js production"
