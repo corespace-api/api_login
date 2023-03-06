@@ -103,7 +103,7 @@ class Service {
   loadMiddleware() {
     this.server.use(express.json());
     this.server.use(express.urlencoded({ extended: true }));
-    // this.server.use(cors(allowedHeader));
+    this.server.use(cors());
     this.server.use(fingerprintMiddleware);
     this.server.disable("x-powered-by");
   }
