@@ -1,12 +1,3 @@
-const express = require('express');
-const mongoose = require('mongoose');
-const path = require('path');
-const fs = require('fs');
-
-// Loading custom modules
-const Logger = require('../assets/utils/logger');
-const { DBConnector } = require('../assets/database/DBManager');
-
 // Loading models
 const userSchema = require('../assets/models/user');
 
@@ -72,25 +63,12 @@ function checkPasswordHash(reqPassword, dbPassword) {
 }
 
 class Health {
-  constructor() {
-    this.logger = new Logger("login/login");
-    this.router = express.Router();
-    this.dbc = new DBConnector();
-  }
-
-  dbConnection() {
-    // Starting connection to the database
-    this.dbc.createAUrl();
-    this.logger.log(`Starting connection to the database...`);
-    this.logger.log(`Database URL: ${this.dbc.url}`);
-    this.dbc.attemptConnection()
-      .then(() => {
-        this.logger.success("Database connection succeeded");
-      })
-      .catch((error) => {
-        this.logger.log("Database connection failed");
-        this.logger.error(error);
-      });
+  constructor(config, logger, express, dbc) {
+    this.config = config;
+    this.logger = logger;
+    this.express = express;
+    this.router = this.express.Router();
+    this.dbc = dbc;
   }
 
   rootRoute() {
@@ -159,7 +137,6 @@ class Health {
   }
 
   load() {
-    this.dbConnection();
     this.rootRoute();
   }
 }
