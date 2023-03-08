@@ -1,7 +1,7 @@
 {
   "name": "api_login",
   "description": "API Login",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "author": "AsP3X",
   "license": "MIT",
   "port": 3000,
