@@ -32,6 +32,8 @@ class Login extends ServiceManager {
 
   loadDependencies() {
     super.loadDependencies();
+    this.express = require('express'); this.logger.info("express loaded");
+    this.server = this.express(); this.logger.info("express initialized");
     this.cors = require('cors');
   }
 
