@@ -5,6 +5,7 @@ class Login extends ServiceManager {
     super(name);
     this.fingerprintMiddleware = null;
     this.cors = null;
+    this.routes = [];
   }
 
   gracefulShutdown() {
@@ -32,8 +33,8 @@ class Login extends ServiceManager {
 
   loadDependencies() {
     super.loadDependencies();
-    this.express = require('express'); this.logger.info("express loaded");
-    this.server = this.express(); this.logger.info("express initialized");
+    this.express = require('express');
+    this.server = this.express();
     this.cors = require('cors');
   }
 
@@ -59,6 +60,16 @@ class Login extends ServiceManager {
     this.server.disable('x-powered-by');
   }
 
+  catchRoot() {
+    this.server.get("/", (req, res) => {
+      res.status(200).json({
+        service: this.config.getConfig("name"),
+        uuid: this.config.getConfig("uuid"),
+        routes: this.routes
+      });
+    });
+  }
+
   loadRoutes() {
     if (!this.config.getConfig("route_path")) {
       this.logger.error("Routes path not set")
@@ -82,14 +93,15 @@ class Login extends ServiceManager {
 
       routeInstance.load();
 
-      this.server.use(`/${routeName}`, routeInstance.router);
+      this.routes.push(`${this.config.getConfig("domain")}:${this.config.getConfig("port")}/${this.config.getConfig("name")}/${routeName}`);
+      this.server.use(`/${this.config.getConfig("name")}/${routeName}`, routeInstance.router);
     });
   }
 
   init() {
     // default behaviour
-    this.createLogger();
     this.loadDependencies();
+    this.createLogger();
     this.loadCustomDependencies();
     this.loadConfig();
 
@@ -104,6 +116,7 @@ class Login extends ServiceManager {
 
     this.logRequests();
     this.loadMiddleware();
+    this.catchRoot();
     this.loadRoutes();
   }
 
