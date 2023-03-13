@@ -61,7 +61,7 @@ class Login extends ServiceManager {
   }
 
   catchRoot() {
-    this.server.get("/", (req, res) => {
+    this.server.get(`/${this.config.getConfig("name")}/`, (req, res) => {
       res.status(200).json({
         service: this.config.getConfig("name"),
         uuid: this.config.getConfig("uuid"),
